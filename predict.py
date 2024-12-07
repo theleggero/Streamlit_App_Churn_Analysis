@@ -1,160 +1,176 @@
 import streamlit as st
 import pickle
 import pandas as pd
-from pathlib import Path
 import os
-import sklearn
-
+ 
+# Load the pipeline (pipelist.pkl) directly
 @st.cache_resource
 def load_pipeline():
-    pipeline_path = Path('Models/premodel.pkl')
-    with open(pipeline_path, 'rb') as file:
-        return pickle.load(file)
-
-def load_model(filename):
-    if os.path.exists(filename):
-        with open(filename, 'rb') as file:
-            return pickle.load(file)
+    pipeline_path = os.path.join(os.getcwd(), "Models", "premodel.pkl")  # Dynamic path for compatibility
+   
+    # Attempt to load the pipeline
+    if os.path.exists(pipeline_path):
+        try:
+            with open(pipeline_path, "rb") as file:
+                return pickle.load(file)
+        except Exception as e:
+            st.error(f"An error occurred while loading the pipeline: {e}")
+            return None
     else:
-        st.error(f"Model file {filename} not found.")
+        st.error(f"premodel.pkl not found at {pipeline_path}")
         return None
-
-def preprocess_input(data):
-    # Map categorical values to numerical where necessary
-    data['SeniorCitizen'] = data['SeniorCitizen'].map({'Yes': 1, 'No': 0})
-    data['Partner'] = data['Partner'].map({'Yes': 1, 'No': 0})
-    # Continue mapping for other features as needed
-    return data
-
+ 
+# Load individual model files directly from the Models folder
+@st.cache_resource
+def load_model(model_path):
+    if os.path.exists(model_path):
+        try:
+            with open(model_path, "rb") as file:
+                return pickle.load(file)
+        except Exception as e:
+            st.error(f"An error occurred while loading the model: {e}")
+            return None
+    else:
+        st.error(f"{model_path} not found.")
+        return None
+ 
+ 
 def predict_page():
-    st.title("Customer Churn Prediction")
-
-    st.sidebar.title("Predict Page")
-    st.sidebar.write("Churn or not Churn Prediction 🪄")
-
-    # Load pipeline
+    st.title("PREDICT EXECUTION")
+    st.sidebar.title("Predict Section")
+    st.sidebar.write('''Users are allowed to input data and receive
+                     predictions based on a trained machine learning model.
+                     ''')
+ 
+    # Load the pipeline
     pipeline = load_pipeline()
-
-    # Load models
-    models_path = {
-        'Decision Tree': 'Models/Decision_tree.pkl',
-        'Hist Gradient Classifier' : 'Models/hist_gradient_boosting_classifier.pkl',
-        'K Nearest' : 'Models/K_nearest_neighbor.pkl',
-        'Logistic Regression' : 'Models/logistic_regression.pkl',
-        'Random Forest' : 'Models/random_forest.pkl',
-        'XGB' : 'Models/XGB_classifier.pkl',
+    if pipeline is None:
+        return  # Stop the function if pipeline loading fails
+ 
+    # Model paths dictionary
+    models_paths = {
+        'Logistic Regression': os.path.join("Models", "LR_model.pkl"),
+        'Random Forest': os.path.join("Models", "random_forest.pkl"),
+        'XGB': os.path.join("Models", "XGB_classifier.pkl"),
+        'K Nearest': os.path.join("Models", "K_nearest_neighbor.pkl"),
+        'Decision Tree': os.path.join("Models", "Decision_tree.pkl")
     }
-
-    model_choice = st.selectbox('Select a Model', list(models_path.keys()))
-    model = load_model(models_path[model_choice])
-
+ 
+    # Select and load the chosen model
+    model_choice = st.selectbox("Select a model", list(models_paths.keys()))
+    model = load_model(models_paths[model_choice])
     if model is None:
-        st.error('Model is not selected')
-        return
-
+        return  # Stop the function if model loading fails
+ 
+    st.write(f"Loaded model type: {type(model)}")
+ 
     # Single Prediction
     st.subheader("Single Customer Prediction")
-    
-    # Input fields
-    Gender = st.selectbox("Gender", ['Male', 'Female'])
-    SeniorCitizen = st.selectbox("Senior Citizen", ['Yes', 'No'])
-    Partner = st.selectbox("Partner", ['Yes', 'No'])
-    Dependents = st.selectbox("Dependents", ['Yes', 'No'])
-    Tenure = st.slider("Tenure (Months)", min_value=1, max_value=72, value=12)
-    PaperlessBilling = st.selectbox("Paperless Billing", ['Yes', 'No'])
-    PaymentMethod = st.selectbox("Payment Method", ['Electronic check', 'Mailed check', 'Bank transfer (automatic)', 'Credit card (automatic)'])
-    MonthlyCharges = st.number_input("Monthly Charges", min_value=0.0, value=50.0)
-    TotalCharges = st.number_input("Total Charges", min_value=0.0, value=500.0)
-    PhoneService = st.selectbox("Phone Service", ['Yes', 'No'])
-    MultipleLines = st.selectbox("Multiple Lines", ['Yes', 'No', 'No phone service'])
-    InternetService = st.selectbox("Internet Service", ['DSL', 'Fiber optic', 'No'])
-    OnlineSecurity = st.selectbox("Online Security", ['Yes', 'No', 'No internet service'])
-    OnlineBackup = st.selectbox("Online Backup", ['Yes', 'No', 'No internet service'])
-    DeviceProtection = st.selectbox("Device Protection", ['Yes', 'No', 'No internet service'])
-    TechSupport = st.selectbox("Tech Support", ['Yes', 'No', 'No internet service'])
-    StreamingTV = st.selectbox("Streaming TV", ['Yes', 'No', 'No internet service'])
-    StreamingMovies = st.selectbox("Streaming Movies", ['Yes', 'No', 'No internet service'])
-    Contract = st.selectbox("Contract", ['Month-to-month', 'One year', 'Two year'])
-
-    if st.button('Predict'):
-        # Create DataFrame with input data
+    gender = st.selectbox("Gender", ['Male', 'Female'])
+    senior_citizen = st.selectbox("Senior Citizen", ['Yes', 'No'])
+    partner = st.selectbox("Partner", ['Yes', 'No'])
+    dependents = st.selectbox("Dependents", ['Yes', 'No'])
+    tenure = st.slider("Tenure (Months)", min_value=1, max_value=72, value=12)
+    paperless_billing = st.selectbox("Paperless Billing", ['Yes', 'No'])
+    payment_method = st.selectbox("Payment Method", ['Electronic check', 'Mailed check', 'Bank transfer (automatic)', 'Credit card (automatic)'])
+    monthly_charges = st.number_input("Monthly Charges", min_value=0.0, value=50.0)
+    total_charges = st.number_input("Total Charges", min_value=0.0, value=500.0)
+    phone_service = st.selectbox("Phone Service", ['Yes', 'No'])
+    multiple_lines = st.selectbox("Multiple Lines", ['Yes', 'No', 'No phone service'])
+    internet_service = st.selectbox("Internet Service", ['DSL', 'Fiber optic', 'No'])
+    online_security = st.selectbox("Online Security", ['Yes', 'No', 'No internet service'])
+    online_backup = st.selectbox("Online Backup", ['Yes', 'No', 'No internet service'])
+    device_protection = st.selectbox("Device Protection", ['Yes', 'No', 'No internet service'])
+    tech_support = st.selectbox("Tech Support", ['Yes', 'No', 'No internet service'])
+    streaming_tv = st.selectbox("Streaming TV", ['Yes', 'No', 'No internet service'])
+    streaming_movies = st.selectbox("Streaming Movies", ['Yes', 'No', 'No internet service'])
+    contract = st.selectbox("Contract", ['Month-to-month', 'One year', 'Two year'])
+ 
+    # Prediction for single customer
+    if st.button("Predict Single"):
+        # Create DataFrame for the single customer
         data = pd.DataFrame({
-            'gender': [Gender],
-            'SeniorCitizen': [SeniorCitizen],
-            'Partner': [Partner],
-            'Dependents': [Dependents],
-            'tenure': [Tenure],
-            'PaperlessBilling': [PaperlessBilling],
-            'PaymentMethod': [PaymentMethod],
-            'MonthlyCharges': [MonthlyCharges],
-            'TotalCharges': [TotalCharges],
-            'PhoneService': [PhoneService],
-            'MultipleLines': [MultipleLines],
-            'InternetService': [InternetService],
-            'OnlineSecurity': [OnlineSecurity],
-            'OnlineBackup': [OnlineBackup],
-            'DeviceProtection': [DeviceProtection],
-            'TechSupport': [TechSupport],
-            'StreamingTV': [StreamingTV],
-            'StreamingMovies': [StreamingMovies],
-            'Contract': [Contract]
+            'Gender': [gender],
+            'SeniorCitizen': [senior_citizen],
+            'Partner': [partner],
+            'Dependents': [dependents],
+            'Tenure': [tenure],
+            'PaperlessBilling': [paperless_billing],
+            'PaymentMethod': [payment_method],
+            'MonthlyCharges': [monthly_charges],
+            'TotalCharges': [total_charges],
+            'PhoneService': [phone_service],
+            'MultipleLines': [multiple_lines],
+            'InternetService': [internet_service],
+            'OnlineSecurity': [online_security],
+            'OnlineBackup': [online_backup],
+            'DeviceProtection': [device_protection],
+            'TechSupport': [tech_support],
+            'StreamingTV': [streaming_tv],
+            'StreamingMovies': [streaming_movies],
+            'Contract': [contract]
         })
-
-        # Preprocess the input data
-        data = preprocess_input(data)
-
-        # Process data through the pipeline for prediction
-        prediction = pipeline.predict(data)
+ 
+        # Use the pipeline to predict
+        prediction = pipeline.predict(data)[0]
         probability = pipeline.predict_proba(data)[0][1] * 100
-        
-        # Display the prediction and probability
-        st.write(f"Single Prediction: {'Churn' if prediction[0] == 1 else 'Not Churn'}")
+ 
+        # Display results
+        st.write(f"Prediction: {'Churn' if prediction == 1 else 'Not Churn'}")
         st.write(f"Churn Probability: {probability:.2f}%")
-
-    # Ensure the 'data' directory exists before saving results
-    os.makedirs("data", exist_ok=True)
-
-    # Bulk Prediction
-    st.header("Bulk Customer Prediction 🪄")
-    uploaded_file = st.file_uploader("Upload CSV File", type="csv")
-
-    if uploaded_file is not None:
+ 
+ 
+    #Bulk Predicition
+    st.header("Bulk Prediction")
+    st.write("Upload a CSV file with customer data")
+ 
+    upload_file =st.file_uploader("Choose the file to upload", type ='csv')
+    if upload_file is not None:
         try:
-            # Read the CSV data file
-            bulk_data = pd.read_csv(uploaded_file)
+            bulk_data =pd.read_csv(upload_file)
             st.write("Data Preview", bulk_data.head())
-
-            # Required columns for prediction
-            required_columns = [
-                'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 'PhoneService',
-                'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
-                'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract',
-                'PaperlessBilling', 'PaymentMethod', 'MonthlyCharges', 'TotalCharges'
+ 
+            #required columns
+            required_columns =[
+                'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure',
+                'PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity',
+                'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
+                'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod',
+                'MonthlyCharges', 'TotalCharges'
             ]
-
-            # Check if all required columns are present
+           
+ 
             if all(col in bulk_data.columns for col in required_columns):
-                # Preprocess bulk data
-                bulk_data = preprocess_input(bulk_data)
-
-                # Make predictions and get churn probabilities
-                bulk_predictions = pipeline.predict(bulk_data)
-                bulk_probabilities = pipeline.predict_proba(bulk_data)[:, 1] * 100
-
-                # Prepare the result
-                bulk_results = bulk_data.copy()
-                bulk_results["Predictions"] = ['Churn' if pred == 1 else 'Not Churn' for pred in bulk_predictions]
-                bulk_results["Churn Probability"] = bulk_probabilities
-
-                # Display results in the Streamlit app
+ 
+                bulk_predictions =pipeline.predict(bulk_data)
+                bulk_probability =pipeline.predict_proba(bulk_data)[:,1]*100
+ 
+                #display results
+                bulk_results =bulk_data.copy()
+                bulk_results["Predictions"] =['Churn' if pred ==1 else 'Not Churn' for pred in bulk_predictions]
+                bulk_results['Churned Probability'] = bulk_probability
+ 
                 st.write("Bulk Prediction Results:")
                 st.dataframe(bulk_results)
-
-                # Save the results to a CSV file
-                result_file = "data/bulk_predictions.csv"
-                bulk_results.to_csv(result_file, index=False)
-                st.success(f"Results saved to {result_file}")
+ 
+ 
+                # save the results
+                result_file ="data/bulk_predictions.csv"
+                bulk_results.to_csv(result_file, index =False)
+                st.success(f"Results saved successfully to{result_file}")
             else:
-                st.error("The uploaded CSV file does not have the required columns.")
+                st.error("Upload csv not the same columns")
         except Exception as e:
-            st.error(f"Error during bulk prediction: {e}")
+            st.error(f"Error during bulk prediction")
+ 
+    if __name__ =="__main__":
+         predict_page()
+ 
+ 
+ 
+ 
+ 
+# Entry point for Streamlit app
+if __name__ == "__main__":
+    predict_page()
+ 
