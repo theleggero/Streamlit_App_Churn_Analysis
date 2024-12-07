@@ -9,7 +9,7 @@ def dashboard_page():
     st.title("Customer Churn Dashboard")
 
     # Load data
-    data_file = os.path.join(os.getcwd(), "Data", "train_data.csv")
+    data_file = os.path.join(os.getcwd(), "data", "train_data.csv")
     data = pd.read_csv(data_file)
 
     # Sidebar filters
