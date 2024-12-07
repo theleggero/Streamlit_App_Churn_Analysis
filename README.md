@@ -12,7 +12,7 @@
 - [Modeling](#modeling)
 - [Evaluation Metrics](#evaluation-metrics)
 - [Conclusion](#conclusion)
-- [Acknowledgements](#acknowledgements)
+
 
 ## Overview
 The **Telco Customer Churn Prediction Model App** is a machine learning application that predicts whether a customer will churn (leave the service) based on their demographic information, account details, and usage data. Customer Lifetime Value (CLV) is also included to assess how valuable a customer is to the business. 
