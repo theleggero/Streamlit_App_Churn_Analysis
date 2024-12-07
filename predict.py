@@ -3,9 +3,8 @@ import pickle
 import pandas as pd
 from pathlib import Path
 import os
-import json
 import sklearn
-                 
+
 @st.cache_resource
 def load_pipeline():
     pipeline_path = Path('Models/premodel.pkl')
@@ -13,12 +12,21 @@ def load_pipeline():
         return pickle.load(file)
 
 def load_model(filename):
-    with open(filename, 'rb') as file:
-        return pickle.load(file)
+    if os.path.exists(filename):
+        with open(filename, 'rb') as file:
+            return pickle.load(file)
+    else:
+        st.error(f"Model file {filename} not found.")
+        return None
 
+def preprocess_input(data):
+    # Map categorical values to numerical where necessary
+    data['SeniorCitizen'] = data['SeniorCitizen'].map({'Yes': 1, 'No': 0})
+    data['Partner'] = data['Partner'].map({'Yes': 1, 'No': 0})
+    # Continue mapping for other features as needed
+    return data
 
 def predict_page():
-
     st.title("Customer Churn Prediction")
 
     st.sidebar.title("Predict Page")
@@ -44,9 +52,6 @@ def predict_page():
         st.error('Model is not selected')
         return
 
-    # Check the model type
-    st.write(f"Loaded Model Type: {type(model)}")
-
     # Single Prediction
     st.subheader("Single Customer Prediction")
     
@@ -70,7 +75,6 @@ def predict_page():
     StreamingTV = st.selectbox("Streaming TV", ['Yes', 'No', 'No internet service'])
     StreamingMovies = st.selectbox("Streaming Movies", ['Yes', 'No', 'No internet service'])
     Contract = st.selectbox("Contract", ['Month-to-month', 'One year', 'Two year'])
-    Churn = st.selectbox("Churn", ['Yes', 'No'])
 
     if st.button('Predict'):
         # Create DataFrame with input data
@@ -93,24 +97,16 @@ def predict_page():
             'TechSupport': [TechSupport],
             'StreamingTV': [StreamingTV],
             'StreamingMovies': [StreamingMovies],
-            'Contract': [Contract],
-            'Churn': [Churn]
+            'Contract': [Contract]
         })
+
+        # Preprocess the input data
+        data = preprocess_input(data)
 
         # Process data through the pipeline for prediction
         prediction = pipeline.predict(data)
         probability = pipeline.predict_proba(data)[0][1] * 100
         
-        # Save results in session state
-        if "single_prediction_history" not in st.session_state:
-            st.session_state.single_prediction_history = []
-
-        st.session_state.single_prediction_history.append({
-            "input_data": data.to_dict(orient="records")[0],
-            "prediction": "Churn" if prediction[0] == 1 else "Not Churn",
-            "probability": probability
-        })
-
         # Display the prediction and probability
         st.write(f"Single Prediction: {'Churn' if prediction[0] == 1 else 'Not Churn'}")
         st.write(f"Churn Probability: {probability:.2f}%")
@@ -133,11 +129,14 @@ def predict_page():
                 'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 'PhoneService',
                 'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
                 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract',
-                'PaperlessBilling', 'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'Churn'
+                'PaperlessBilling', 'PaymentMethod', 'MonthlyCharges', 'TotalCharges'
             ]
 
             # Check if all required columns are present
             if all(col in bulk_data.columns for col in required_columns):
+                # Preprocess bulk data
+                bulk_data = preprocess_input(bulk_data)
+
                 # Make predictions and get churn probabilities
                 bulk_predictions = pipeline.predict(bulk_data)
                 bulk_probabilities = pipeline.predict_proba(bulk_data)[:, 1] * 100
