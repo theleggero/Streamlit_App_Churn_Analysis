@@ -49,11 +49,11 @@ def predict_page():
  
     # Model paths dictionary
     models_paths = {
-        'Logistic Regression': os.path.join("Models", "LR_model.pkl"),
-        'Random Forest': os.path.join("Models", "random_forest.pkl"),
-        'XGB': os.path.join("Models", "XGB_classifier.pkl"),
-        'K Nearest': os.path.join("Models", "K_nearest_neighbor.pkl"),
-        'Decision Tree': os.path.join("Models", "Decision_tree.pkl")
+        'Logistic Regression': os.path.join("Models", "LR.pkl"),
+        'Random Forest': os.path.join("Models", "RF.pkl"),
+        'XGB': os.path.join("Models", "XGB.pkl"),
+        'K Nearest': os.path.join("Models", "K-Nearest Neighbors.pkl"),
+        'Decision Tree': os.path.join("Models", "Decision_Tree.pkl")
     }
  
     # Select and load the chosen model
