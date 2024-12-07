@@ -8,7 +8,7 @@ import sklearn
                  
 @st.cache_resource
 def load_pipeline():
-    pipeline_path = Path('Models') / 'premodel.pkl'
+    pipeline_path = Path('Models' / 'premodel.pkl')
     with open(pipeline_path, 'rb') as file:
         return pickle.load(file)
 
