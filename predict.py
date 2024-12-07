@@ -2,13 +2,13 @@ import streamlit as st
 import pickle
 import pandas as pd
 import os
- 
-# Load the pipeline (pipelist.pkl) directly
+
+# Function to load the pre-trained pipeline (premodel.pkl) from the Models directory
 @st.cache_resource
 def load_pipeline():
     pipeline_path = os.path.join(os.getcwd(), "Models", "premodel.pkl")  # Dynamic path for compatibility
-   
-    # Attempt to load the pipeline
+
+    # Attempt to load the pipeline, handle exceptions if any occur
     if os.path.exists(pipeline_path):
         try:
             with open(pipeline_path, "rb") as file:
@@ -19,8 +19,8 @@ def load_pipeline():
     else:
         st.error(f"premodel.pkl not found at {pipeline_path}")
         return None
- 
-# Load individual model files directly from the Models folder
+
+# Function to load individual models from the Models folder
 @st.cache_resource
 def load_model(model_path):
     if os.path.exists(model_path):
@@ -33,21 +33,21 @@ def load_model(model_path):
     else:
         st.error(f"{model_path} not found.")
         return None
- 
- 
+
+# Main function for the prediction page
 def predict_page():
-    st.title("PREDICT EXECUTION")
-    st.sidebar.title("Predict Section")
-    st.sidebar.write('''Users are allowed to input data and receive
-                     predictions based on a trained machine learning model.
+    st.title("PREDICT EXECUTION")  # Page title
+    st.sidebar.title("Predict Section")  # Sidebar title
+    st.sidebar.write('''This section allows users to input customer data and
+                     receive predictions based on a trained machine learning model.
                      ''')
- 
-    # Load the pipeline
+
+    # Load the pre-trained pipeline
     pipeline = load_pipeline()
     if pipeline is None:
-        return  # Stop the function if pipeline loading fails
- 
-    # Model paths dictionary
+        return  # Stop execution if pipeline loading fails
+
+    # Dictionary of available models and their file paths
     models_paths = {
         'Logistic Regression': os.path.join("Models", "LR.pkl"),
         'Random Forest': os.path.join("Models", "RF.pkl"),
@@ -55,16 +55,16 @@ def predict_page():
         'K Nearest': os.path.join("Models", "K-Nearest Neighbors.pkl"),
         'Decision Tree': os.path.join("Models", "Decision_Tree.pkl")
     }
- 
-    # Select and load the chosen model
+
+    # Select model from dropdown and load it
     model_choice = st.selectbox("Select a model", list(models_paths.keys()))
     model = load_model(models_paths[model_choice])
     if model is None:
-        return  # Stop the function if model loading fails
- 
-    st.write(f"Loaded model type: {type(model)}")
- 
-    # Single Prediction
+        return  # Stop if model loading fails
+
+    st.write(f"Loaded model type: {type(model)}")  # Display model type
+
+    # Section for single customer prediction input
     st.subheader("Single Customer Prediction")
     gender = st.selectbox("Gender", ['Male', 'Female'])
     senior_citizen = st.selectbox("Senior Citizen", ['Yes', 'No'])
@@ -85,10 +85,10 @@ def predict_page():
     streaming_tv = st.selectbox("Streaming TV", ['Yes', 'No', 'No internet service'])
     streaming_movies = st.selectbox("Streaming Movies", ['Yes', 'No', 'No internet service'])
     contract = st.selectbox("Contract", ['Month-to-month', 'One year', 'Two year'])
- 
-    # Prediction for single customer
+
+    # Prediction for a single customer when the "Predict" button is pressed
     if st.button("Predict Single"):
-        # Create DataFrame for the single customer
+        # Create DataFrame from the input values for the single customer
         data = pd.DataFrame({
             'Gender': [gender],
             'SeniorCitizen': [senior_citizen],
@@ -110,67 +110,57 @@ def predict_page():
             'StreamingMovies': [streaming_movies],
             'Contract': [contract]
         })
- 
-        # Use the pipeline to predict
+
+        # Use the pipeline to predict and calculate churn probability
         prediction = pipeline.predict(data)[0]
         probability = pipeline.predict_proba(data)[0][1] * 100
- 
-        # Display results
+
+        # Display the prediction and probability results
         st.write(f"Prediction: {'Churn' if prediction == 1 else 'Not Churn'}")
         st.write(f"Churn Probability: {probability:.2f}%")
- 
- 
-    #Bulk Predicition
+
+    # Section for bulk prediction
     st.header("Bulk Prediction")
-    st.write("Upload a CSV file with customer data")
- 
-    upload_file =st.file_uploader("Choose the file to upload", type ='csv')
+    st.write("Upload a CSV file with customer data for bulk prediction")
+
+    upload_file = st.file_uploader("Choose the file to upload", type='csv')  # File upload widget
     if upload_file is not None:
         try:
-            bulk_data =pd.read_csv(upload_file)
-            st.write("Data Preview", bulk_data.head())
- 
-            #required columns
-            required_columns =[
+            bulk_data = pd.read_csv(upload_file)  # Read CSV data
+            st.write("Data Preview", bulk_data.head())  # Display first few rows
+
+            # Required columns for the bulk prediction
+            required_columns = [
                 'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure',
                 'PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity',
                 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
                 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod',
                 'MonthlyCharges', 'TotalCharges'
             ]
-           
- 
+
+            # Check if all required columns are present in the uploaded file
             if all(col in bulk_data.columns for col in required_columns):
- 
-                bulk_predictions =pipeline.predict(bulk_data)
-                bulk_probability =pipeline.predict_proba(bulk_data)[:,1]*100
- 
-                #display results
-                bulk_results =bulk_data.copy()
-                bulk_results["Predictions"] =['Churn' if pred ==1 else 'Not Churn' for pred in bulk_predictions]
+                bulk_predictions = pipeline.predict(bulk_data)  # Predict churn for all records
+                bulk_probability = pipeline.predict_proba(bulk_data)[:, 1] * 100  # Churn probabilities
+
+                # Create a copy of the data with predictions and probabilities
+                bulk_results = bulk_data.copy()
+                bulk_results["Predictions"] = ['Churn' if pred == 1 else 'Not Churn' for pred in bulk_predictions]
                 bulk_results['Churned Probability'] = bulk_probability
- 
+
+                # Display bulk prediction results
                 st.write("Bulk Prediction Results:")
                 st.dataframe(bulk_results)
- 
- 
-                # save the results
-                result_file ="data/bulk_predictions.csv"
-                bulk_results.to_csv(result_file, index =False)
-                st.success(f"Results saved successfully to{result_file}")
+
+                # Save results to a CSV file
+                result_file = "data/bulk_predictions.csv"
+                bulk_results.to_csv(result_file, index=False)
+                st.success(f"Results saved successfully to {result_file}")
             else:
-                st.error("Upload csv not the same columns")
+                st.error("The uploaded CSV does not have the required columns.")
         except Exception as e:
-            st.error(f"Error during bulk prediction")
- 
-    if __name__ =="__main__":
-         predict_page()
- 
- 
- 
- 
- 
+            st.error(f"Error during bulk prediction: {e}")
+
 # Entry point for Streamlit app
 if __name__ == "__main__":
     predict_page()
- 
