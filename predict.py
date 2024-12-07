@@ -8,7 +8,7 @@ import sklearn
                  
 @st.cache_resource
 def load_pipeline():
-    pipeline_path = Path('Models' / 'premodel.pkl')
+    pipeline_path = Path('Models/premodel.pkl')
     with open(pipeline_path, 'rb') as file:
         return pickle.load(file)
 
@@ -17,11 +17,9 @@ def load_model(filename):
         return pickle.load(file)
 
 
-
 def predict_page():
 
     st.title("Customer Churn Prediction")
-
 
     st.sidebar.title("Predict Page")
     st.sidebar.write("Churn or not Churn Prediction 🪄")
@@ -31,9 +29,9 @@ def predict_page():
 
     # Load models
     models_path = {
-        'Decision Tree': 'Models/Decision tree.pkl',
+        'Decision Tree': 'Models/Decision_tree.pkl',
         'Hist Gradient Classifier' : 'Models/hist_gradient_boosting_classifier.pkl',
-        'K Nearest' : 'Models/K_nearest_neghbor.pkl',
+        'K Nearest' : 'Models/K_nearest_neighbor.pkl',
         'Logistic Regression' : 'Models/logistic_regression.pkl',
         'Random Forest' : 'Models/random_forest.pkl',
         'XGB' : 'Models/XGB_classifier.pkl',
@@ -51,7 +49,6 @@ def predict_page():
 
     # Single Prediction
     st.subheader("Single Customer Prediction")
-    
     
     # Input fields
     Gender = st.selectbox("Gender", ['Male', 'Female'])
@@ -76,8 +73,7 @@ def predict_page():
     Churn = st.selectbox("Churn", ['Yes', 'No'])
 
     if st.button('Predict'):
-        
-        # Create DataFrame
+        # Create DataFrame with input data
         data = pd.DataFrame({
             'gender': [Gender],
             'SeniorCitizen': [SeniorCitizen],
@@ -101,7 +97,7 @@ def predict_page():
             'Churn': [Churn]
         })
 
-        # Process through the pipeline
+        # Process data through the pipeline for prediction
         prediction = pipeline.predict(data)
         probability = pipeline.predict_proba(data)[0][1] * 100
         
@@ -115,14 +111,12 @@ def predict_page():
             "probability": probability
         })
 
-        # Display results
+        # Display the prediction and probability
         st.write(f"Single Prediction: {'Churn' if prediction[0] == 1 else 'Not Churn'}")
         st.write(f"Churn Probability: {probability:.2f}%")
-        
 
-        # Ensure the 'data' directory exists before saving the results
-        os.makedirs("data", exist_ok=True)  # Create the 'data' directory if it doesn't exist
-
+    # Ensure the 'data' directory exists before saving results
+    os.makedirs("data", exist_ok=True)
 
     # Bulk Prediction
     st.header("Bulk Customer Prediction 🪄")
@@ -130,11 +124,11 @@ def predict_page():
 
     if uploaded_file is not None:
         try:
-            # Read the data
+            # Read the CSV data file
             bulk_data = pd.read_csv(uploaded_file)
             st.write("Data Preview", bulk_data.head())
 
-            # Required columns
+            # Required columns for prediction
             required_columns = [
                 'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 'PhoneService',
                 'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
@@ -142,25 +136,26 @@ def predict_page():
                 'PaperlessBilling', 'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'Churn'
             ]
 
+            # Check if all required columns are present
             if all(col in bulk_data.columns for col in required_columns):
+                # Make predictions and get churn probabilities
                 bulk_predictions = pipeline.predict(bulk_data)
                 bulk_probabilities = pipeline.predict_proba(bulk_data)[:, 1] * 100
 
-                # Display results
+                # Prepare the result
                 bulk_results = bulk_data.copy()
                 bulk_results["Predictions"] = ['Churn' if pred == 1 else 'Not Churn' for pred in bulk_predictions]
                 bulk_results["Churn Probability"] = bulk_probabilities
 
+                # Display results in the Streamlit app
                 st.write("Bulk Prediction Results:")
                 st.dataframe(bulk_results)
-
 
                 # Save the results to a CSV file
                 result_file = "data/bulk_predictions.csv"
                 bulk_results.to_csv(result_file, index=False)
                 st.success(f"Results saved to {result_file}")
             else:
-                st.error("Upload CSV file with required columns")
-
+                st.error("The uploaded CSV file does not have the required columns.")
         except Exception as e:
             st.error(f"Error during bulk prediction: {e}")
